@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>療程預約管理系統</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f1efe9;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #9a9890;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-mid: #B5D4F4;
+    --blue-dark: #0c447c;
+    --teal: #0F6E56;
+    --teal-light: #E1F5EE;
+    --teal-mid: #9FE1CB;
+    --green-light: #C0DD97;
+    --green-dark: #27500A;
+    --amber-light: #FAC775;
+    --amber-dark: #633806;
+    --red-light: #FCEBEB;
+    --red: #E24B4A;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface); border-bottom: 0.5px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center; gap: 14px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    width: 34px; height: 34px; background: var(--blue);
+    border-radius: var(--radius); display: flex;
+    align-items: center; justify-content: center; color: #fff; font-size: 18px;
+  }
+  header h1 { font-size: 16px; font-weight: 500; }
+  header p  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .sync-status {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text3);
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #ccc; transition: background 0.3s;
+  }
+  .sync-dot.ok      { background: #4caf50; }
+  .sync-dot.loading { background: #ff9800; animation: pulse 1s infinite; }
+  .sync-dot.err     { background: var(--red); }
+  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 20px; }
+
+  .section {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 11px; font-weight: 500; color: var(--text2);
+    margin-bottom: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+
+  .form-row  { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
+  .form-group label { font-size: 12px; color: var(--text2); }
+
+  input, select {
+    padding: 8px 10px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius); font-size: 14px;
+    background: var(--surface2); color: var(--text); width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus {
+    outline: none; border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(24,95,165,0.14);
+  }
+
+  .btn {
+    padding: 8px 16px; border-radius: var(--radius); font-size: 14px;
+    cursor: pointer; border: 0.5px solid var(--border2);
+    background: var(--surface); color: var(--text); white-space: nowrap;
+    transition: background 0.12s;
+  }
+  .btn:hover      { background: var(--surface2); }
+  .btn-primary    { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-primary:hover { background: var(--blue-dark); }
+  .btn-sm         { padding: 6px 12px; font-size: 13px; }
+  .btn:disabled   { opacity: 0.5; cursor: not-allowed; }
+
+  .main-grid   { display: flex; gap: 14px; flex-wrap: wrap; }
+  .panel-left  { flex: 0 0 275px; min-width: 220px; }
+  .panel-right { flex: 1; min-width: 400px; }
+
+  .patient-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 11px; border-radius: var(--radius);
+    border: 0.5px solid var(--border); margin-bottom: 6px;
+    cursor: pointer; background: var(--surface);
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .patient-item:hover    { border-color: var(--border2); background: var(--surface2); }
+  .patient-item.selected { border-color: var(--blue); background: var(--blue-light); }
+  .patient-info .pname   { font-size: 14px; font-weight: 500; }
+  .patient-info .pdetail { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .badges { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+  .badge  {
+    padding: 2px 7px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .badge-blue  { background: var(--blue-mid);   color: var(--blue-dark); }
+  .badge-green { background: var(--green-light); color: var(--green-dark); }
+  .badge-amber { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-teal  { background: var(--teal-mid);    color: var(--teal); }
+
+  .delete-btn {
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: 13px; padding: 3px 6px;
+    border-radius: 4px; transition: color 0.1s, background 0.1s;
+  }
+  .delete-btn:hover { color: var(--red); background: var(--red-light); }
+
+  .week-nav  { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .week-label { font-size: 14px; font-weight: 500; flex: 1; text-align: center; }
+
+  .calendar-wrap { overflow-x: auto; }
+  .calendar-grid {
+    display: grid; grid-template-columns: 52px repeat(5, 1fr);
+    gap: 1px; background: var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    font-size: 11px; min-width: 420px;
+  }
+
+  .cal-header {
+    background: var(--surface2); padding: 7px 4px;
+    text-align: center; font-weight: 500; color: var(--text2); font-size: 11px; line-height: 1.5;
+  }
+  .cal-time {
+    background: var(--surface2); padding: 5px 7px;
+    font-size: 10px; color: var(--text3);
+    text-align: right; display: flex; align-items: center; justify-content: flex-end;
+  }
+  .cal-cell {
+    background: var(--surface); padding: 3px;
+    min-height: 38px; cursor: pointer; transition: background 0.1s;
+  }
+  .cal-cell:hover         { background: var(--blue-light); }
+  .cal-cell.booked        { background: var(--blue-light); cursor: default; }
+  .cal-cell.booked:hover  { background: var(--blue-mid); }
+  .cal-cell.mine          { background: var(--teal-light); }
+  .cal-cell.mine:hover    { background: var(--teal-mid); }
+  .cal-cell.disabled      { cursor: default; background: var(--surface); }
+  .cal-cell.disabled:hover{ background: var(--surface); }
+
+  .cal-divider-time {
+    background: #e8e6df; padding: 4px 7px;
+    font-size: 9px; color: var(--text3); text-align: right;
+    display: flex; align-items: center; justify-content: flex-end;
+    font-weight: 500; letter-spacing: 0.04em;
+  }
+  .cal-divider-cell { background: #e8e6df; border-top: 1.5px dashed var(--border2); min-height: 12px; }
+
+  .booking-chip {
+    background: var(--blue); color: #fff;
+    border-radius: 4px; padding: 2px 5px;
+    font-size: 9px; line-height: 1.5; display: flex; flex-direction: column; gap: 1px;
+  }
+  .booking-chip.mine-chip { background: var(--teal); }
+  .chip-top       { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
+  .chip-therapist { opacity: 0.85; font-size: 8.5px; }
+  .chip-x {
+    cursor: pointer; opacity: 0.75; font-size: 10px;
+    background: none; border: none; color: #fff; padding: 0; flex-shrink: 0;
+  }
+  .chip-x:hover { opacity: 1; }
+
+  .summary-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .summary-card {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 11px 15px; flex: 1; min-width: 90px;
+  }
+  .summary-card .s-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .summary-card .s-value { font-size: 22px; font-weight: 500; }
+
+  .selected-info {
+    font-size: 13px; color: var(--text2); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-height: 26px;
+  }
+  .selected-name { font-size: 15px; font-weight: 500; color: var(--text); }
+
+  .empty-hint { font-size: 13px; color: var(--text3); text-align: center; padding: 26px 12px; line-height: 1.7; }
+  .error-msg  { font-size: 12px; color: var(--red); margin-top: 6px; display: none; }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(245,244,240,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999; flex-direction: column; gap: 12px;
+    font-size: 14px; color: var(--text2);
+  }
+  .spinner {
+    width: 30px; height: 30px;
+    border: 2.5px solid var(--border2); border-top-color: var(--blue);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    header { padding: 12px 14px; }
+    .container { padding: 12px; }
+    .panel-left { flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div>連接 Google 試算表中…</div>
+</div>
+
+<header>
+  <div class="logo">+</div>
+  <div>
+    <h1>療程預約管理系統</h1>
+    <p>週一至週五 ｜ 08:00–11:00 &amp; 13:30–16:00 ｜ 每時段限一位病患</p>
+  </div>
+  <div class="sync-status">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-label">連線中</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="section">
+    <div class="section-title">新增病患</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>病歷號</label>
+        <input type="text" id="inp-id" placeholder="例：P-20240001" />
+      </div>
+      <div class="form-group">
+        <label>姓名</label>
+        <input type="text" id="inp-name" placeholder="姓名" />
+      </div>
+      <div class="form-group" style="max-width:120px;">
+        <label>購買療程次數</label>
+        <input type="number" id="inp-sessions" min="1" max="99" value="5" />
+      </div>
+      <div class="form-group" style="max-width:160px;">
+        <label>負責治療師</label>
+        <select id="inp-therapist">
+          <option value="">請選擇治療師</option>
+          <option>黃雨潔</option><option>李慧君</option><option>朱悅寧</option>
+          <option>戴辰耘</option><option>柯驊珈</option><option>李怡靜</option>
+          <option>蔡怡珏</option><option>劉威麟</option><option>李彥成</option>
+          <option>陳浩</option><option>張哲諭</option><option>蔡宜珊</option>
+          <option>李彥蓉</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="btn-add" onclick="addPatient()">新增病患</button>
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <div class="main-grid">
+    <div class="panel-left">
+      <div class="section" style="height:100%;">
+        <div class="section-title">病患列表 — 點選後安排預約</div>
+        <div id="patient-list"><div class="empty-hint">載入中…</div></div>
+      </div>
+    </div>
+
+    <div class="panel-right">
+      <div class="section">
+        <div class="section-title">預約時間表</div>
+        <div class="selected-info" id="selected-info">請從左側選取病患後，點選空白格子安排預約</div>
+        <div class="week-nav">
+          <button class="btn btn-sm" onclick="prevWeek()">&#8249; 上週</button>
+          <div class="week-label" id="week-label"></div>
+          <button class="btn btn-sm" onclick="nextWeek()">下週 &#8250;</button>
+        </div>
+        <div class="calendar-wrap">
+          <div class="calendar-grid" id="cal-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">統計摘要</div>
+    <div class="summary-row">
+      <div class="summary-card"><div class="s-label">病患人數</div><div class="s-value" id="stat-patients">0</div></div>
+      <div class="summary-card"><div class="s-label">總購買次數</div><div class="s-value" id="stat-total">0</div></div>
+      <div class="summary-card"><div class="s-label">已預約次數</div><div class="s-value" id="stat-booked">0</div></div>
+      <div class="summary-card"><div class="s-label">剩餘次數</div><div class="s-value" id="stat-remain">0</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── API 網址 ───────────────────────────────────────────────
+const API = 'https://script.google.com/macros/s/AKfycbz5BdWNZoPDhI5w-sNI-1pKOVkSzl-92MaoBXLMs0wRHkfm-att0Immi5GwJ0Ujp4UQEQ/exec';
+
+const AM_SLOTS = ['8:00','8:30','9:00','9:30','10:00','10:30','11:00'];
+const PM_SLOTS = ['13:30','14:00','14:30','15:00','15:30','16:00'];
+const DAYS     = ['週一','週二','週三','週四','週五'];
+
+let patients = [], bookings = {}, selectedPatientId = null, weekOffset = 0;
+
+// ── Sync UI ────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  document.getElementById('sync-dot').className = 'sync-dot' + (state ? ' '+state : '');
+  document.getElementById('sync-label').textContent = label;
+}
+
+// ── API helpers ────────────────────────────────────────────
+async function apiGet(action) {
+  const res = await fetch(`${API}?action=${action}`);
+  return res.json();
+}
+async function apiPost(body) {
+  const res = await fetch(API, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+function setLoading(on) {
+  document.getElementById('btn-add').disabled = on;
+  setSyncStatus(on ? 'loading' : 'ok', on ? '處理中…' : '已同步');
+}
+
+// ── Load all data ──────────────────────────────────────────
+async function loadAll() {
+  setSyncStatus('loading', '載入中…');
+  try {
+    const data = await apiGet('getAll');
+    patients = data.patients || [];
+    bookings = data.bookings || {};
+    setSyncStatus('ok', '已同步');
+  } catch(e) {
+    setSyncStatus('err', '連線失敗');
+  }
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderPatients(); renderCalendar(); updateStats();
+}
+
+// ── Patient actions ────────────────────────────────────────
+async function addPatient() {
+  const id        = document.getElementById('inp-id').value.trim();
+  const name      = document.getElementById('inp-name').value.trim();
+  const sessions  = parseInt(document.getElementById('inp-sessions').value) || 5;
+  const therapist = document.getElementById('inp-therapist').value;
+  const errEl     = document.getElementById('error-msg');
+  if (!id || !name)  { errEl.textContent='請填寫病歷號與姓名'; errEl.style.display='block'; return; }
+  if (!therapist)    { errEl.textContent='請選擇負責治療師';   errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  setLoading(true);
+  const res = await apiPost({ action:'addPatient', id, name, sessions, therapist });
+  if (res.error) { errEl.textContent = res.error; errEl.style.display='block'; setLoading(false); return; }
+  document.getElementById('inp-id').value='';
+  document.getElementById('inp-name').value='';
+  document.getElementById('inp-sessions').value='5';
+  document.getElementById('inp-therapist').value='';
+  await loadAll();
+  setLoading(false);
+}
+
+async function deletePatient(id) {
+  const p = patients.find(x => x.id === id);
+  if (!confirm(`確定要刪除病患「${p?.name}」及其所有預約？`)) return;
+  if (selectedPatientId === id) {
+    selectedPatientId = null;
+    document.getElementById('selected-info').textContent = '請從左側選取病患後，點選空白格子安排預約';
+  }
+  setLoading(true);
+  await apiPost({ action:'delPatient', id });
+  await loadAll();
+  setLoading(false);
+}
+
+function selectPatient(id) {
+  selectedPatientId = id;
+  renderPatients(); renderCalendar(); updateSelectedInfo();
+}
+
+// ── Render ─────────────────────────────────────────────────
+function renderPatients() {
+  const el = document.getElementById('patient-list');
+  if (!patients.length) { el.innerHTML='<div class="empty-hint">尚無病患資料<br>請先新增病患</div>'; return; }
+  el.innerHTML = patients.map(p => {
+    const booked = Object.values(bookings).filter(v => v.patientId === p.id).length;
+    const remain = p.sessions - booked;
+    const sel    = selectedPatientId === p.id ? ' selected' : '';
+    const bc     = remain === 0 ? 'badge-amber' : 'badge-green';
+    return `<div class="patient-item${sel}" onclick="selectPatient('${esc(p.id)}')">
+      <div class="patient-info">
+        <div class="pname">${p.name}</div>
+        <div class="pdetail">${p.id} ｜ ${p.therapist}</div>
+      </div>
+      <div class="badges">
+        <span class="badge badge-blue">${p.sessions}次</span>
+        <span class="badge ${bc}">剩${remain}</span>
+        <button class="delete-btn" onclick="event.stopPropagation();deletePatient('${esc(p.id)}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCalendar() {
+  const monday = getMonday(weekOffset);
+  const days   = Array.from({length:5}, (_,i) => { const d=new Date(monday); d.setDate(d.getDate()+i); return d; });
+  document.getElementById('week-label').textContent =
+    `${monday.getFullYear()}年 ${formatDate(monday)} — ${formatDate(days[4])}`;
+
+  const selPat = patients.find(x => x.id === selectedPatientId);
+  const canAdd = selPat && canBookMore(selectedPatientId);
+  let html = '';
+
+  html += '<div class="cal-header"></div>';
+  days.forEach((d,i) => {
+    html += `<div class="cal-header">${DAYS[i]}<br><span style="font-weight:400;font-size:9px;color:var(--text3)">${formatDate(d)}</span></div>`;
+  });
+
+  AM_SLOTS.forEach(slot => {
+    html += `<div class="cal-time">${slot}</div>`;
+    days.forEach(d => { html += buildCell(dateStr(d), slot, canAdd, selPat); });
+  });
+
+  html += `<div class="cal-divider-time">午休</div>`;
+  days.forEach(() => { html += `<div class="cal-divider-cell"></div>`; });
+
+  PM_SLOTS.forEach(slot => {
+    html += `<div class="cal-time">${slot}</div>`;
+    days.forEach(d => { html += buildCell(dateStr(d), slot, canAdd, selPat); });
+  });
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function buildCell(dStr, slot, canAdd, selPat) {
+  const key = `${dStr}|${slot}`;
+  const bk  = bookings[key];
+  if (bk) {
+    const pat     = patients.find(x => x.id === bk.patientId);
+    const pname   = pat ? pat.name.slice(0,3) : bk.patientId;
+    const isMine  = bk.patientId === selectedPatientId;
+    const cellCls = isMine ? 'cal-cell mine' : 'cal-cell booked';
+    const chipCls = isMine ? 'booking-chip mine-chip' : 'booking-chip';
+    return `<div class="${cellCls}" title="${pat?pat.name:bk.patientId} ／ ${bk.therapist}（${slot}）">
+      <div class="${chipCls}">
+        <div class="chip-top"><span>${pname}</span><button class="chip-x" onclick="removeBooking('${esc(key)}')">✕</button></div>
+        <div class="chip-therapist">${bk.therapist}</div>
+      </div>
+    </div>`;
+  }
+  if (canAdd) {
+    return `<div class="cal-cell" onclick="book('${esc(key)}')" title="預約 ${selPat.name}（${slot}）"></div>`;
+  }
+  const hint = !selectedPatientId ? '請先選取病患' : '療程次數已用完';
+  return `<div class="cal-cell disabled" title="${hint}"></div>`;
+}
+
+function canBookMore(pid) {
+  const p = patients.find(x => x.id === pid);
+  if (!p) return false;
+  return Object.values(bookings).filter(v => v.patientId === pid).length < p.sessions;
+}
+
+async function book(key) {
+  if (!selectedPatientId || !canBookMore(selectedPatientId)) return;
+  const pat = patients.find(x => x.id === selectedPatientId);
+  setLoading(true);
+  await apiPost({ action:'addBooking', key, patientId: selectedPatientId, therapist: pat.therapist });
+  await loadAll();
+  if (selectedPatientId) updateSelectedInfo();
+  setLoading(false);
+}
+
+async function removeBooking(key) {
+  setLoading(true);
+  await apiPost({ action:'delBooking', key });
+  await loadAll();
+  if (selectedPatientId) updateSelectedInfo();
+  setLoading(false);
+}
+
+function updateSelectedInfo() {
+  if (!selectedPatientId) return;
+  const p = patients.find(x => x.id === selectedPatientId);
+  if (!p) return;
+  const booked = Object.values(bookings).filter(v => v.patientId === selectedPatientId).length;
+  const remain = p.sessions - booked;
+  const bc     = remain === 0 ? 'badge-amber' : 'badge-green';
+  document.getElementById('selected-info').innerHTML =
+    `<span class="selected-name">${p.name}</span>
+     <span class="badge badge-blue">病歷號 ${p.id}</span>
+     <span class="badge badge-teal">治療師 ${p.therapist}</span>
+     <span class="badge ${bc}">剩餘 ${remain} 次</span>`;
+}
+
+function prevWeek() { weekOffset--; renderCalendar(); }
+function nextWeek() { weekOffset++; renderCalendar(); }
+
+function updateStats() {
+  const total  = patients.reduce((a,p) => a + Number(p.sessions), 0);
+  const booked = Object.keys(bookings).length;
+  document.getElementById('stat-patients').textContent = patients.length;
+  document.getElementById('stat-total').textContent    = total;
+  document.getElementById('stat-booked').textContent   = booked;
+  document.getElementById('stat-remain').textContent   = total - booked;
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function getMonday(offset) {
+  const d = new Date(), day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + offset * 7);
+  d.setHours(0,0,0,0); return d;
+}
+function dateStr(d)   { return d.toISOString().slice(0,10); }
+function formatDate(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
+function esc(s)       { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── Auto-refresh every 30s ─────────────────────────────────
+setInterval(loadAll, 30000);
+
+// ── Init ───────────────────────────────────────────────────
+loadAll();
+renderCalendar();
+</script>
+</body>
+</html>
